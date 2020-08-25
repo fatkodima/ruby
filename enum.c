@@ -82,6 +82,18 @@ grep_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, args))
 }
 
 static VALUE
+grep_re_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, args))
+{
+    struct MEMO *memo = MEMO_CAST(args);
+    ENUM_WANT_SVALUE();
+
+    if (RTEST(rb_funcallv(memo->v1, rb_intern("match?"), 1, &i)) == RTEST(memo->u3.value)) {
+        rb_ary_push(memo->v2, i);
+    }
+    return Qnil;
+}
+
+static VALUE
 grep_iter_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, args))
 {
     struct MEMO *memo = MEMO_CAST(args);
@@ -117,7 +129,18 @@ enum_grep(VALUE obj, VALUE pat)
     VALUE ary = rb_ary_new();
     struct MEMO *memo = MEMO_NEW(pat, ary, Qtrue);
 
-    rb_block_call(obj, id_each, 0, 0, rb_block_given_p() ? grep_iter_i : grep_i, (VALUE)memo);
+    rb_block_call_func_t func;
+    if (rb_block_given_p()) {
+        func = grep_iter_i;
+    }
+    else if (RB_TYPE_P(pat, T_REGEXP)) {
+        func = grep_re_i;
+    }
+    else {
+        func = grep_i;
+    }
+
+    rb_block_call(obj, id_each, 0, 0, func, (VALUE)memo);
 
     return ary;
 }
@@ -143,7 +166,18 @@ enum_grep_v(VALUE obj, VALUE pat)
     VALUE ary = rb_ary_new();
     struct MEMO *memo = MEMO_NEW(pat, ary, Qfalse);
 
-    rb_block_call(obj, id_each, 0, 0, rb_block_given_p() ? grep_iter_i : grep_i, (VALUE)memo);
+    rb_block_call_func_t func;
+    if (rb_block_given_p()) {
+        func = grep_iter_i;
+    }
+    else if (RB_TYPE_P(pat, T_REGEXP)) {
+        func = grep_re_i;
+    }
+    else {
+        func = grep_i;
+    }
+
+    rb_block_call(obj, id_each, 0, 0, func, (VALUE)memo);
 
     return ary;
 }
